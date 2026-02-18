@@ -1,121 +1,143 @@
 [
   {
-    "key": "searchfieldGroup",
-    "templateOptions": {
-      "label": "Search field (wildcard search in Display name, description and mail)",
-      "placeholder": "Display name, description, or mail (use * to search all groups)",
-      "required": true
-    },
-    "type": "input",
-    "summaryVisibility": "Hide element",
-    "requiresTemplateOptions": true,
-    "requiresKey": true,
-    "requiresDataSource": false
-  },
-  {
-    "key": "group",
-    "templateOptions": {
-      "label": "Select group",
-      "grid": {
-        "columns": [
-          {
-            "headerName": "Display Name",
-            "field": "displayName"
-          },
-          {
-            "headerName": "Description",
-            "field": "description"
-          },
-          {
-            "headerName": "Mail",
-            "field": "mail"
-          },
-          {
-            "headerName": "ID",
-            "field": "id"
-          }
-        ],
-        "height": 300,
-        "rowSelection": "single"
-      },
-      "dataSourceConfig": {
-        "dataSourceGuid": "$dataSourceGuid_0",
-        "input": {
-          "propertyInputs": [
-            {
-              "propertyName": "searchValue",
-              "otherFieldValue": {
-                "otherFieldKey": "searchfieldGroup"
+    "label": "Select group",
+    "fields": [
+      {
+        "key": "gridGroups",
+        "templateOptions": {
+          "label": "Select group",
+          "required": true,
+          "grid": {
+            "columns": [
+              {
+                "headerName": "Name",
+                "field": "name"
+              },
+              {
+                "headerName": "Id",
+                "field": "id"
               }
-            }
-          ]
-        }
-      },
-      "useFilter": true,
-      "useDefault": false,
-      "allowCsvDownload": true,
-      "required": true
-    },
-    "type": "grid",
-    "summaryVisibility": "Show",
-    "requiresTemplateOptions": true,
-    "requiresKey": true,
-    "requiresDataSource": true
-  },
-  {
-    "key": "groupMemberships",
-    "templateOptions": {
-      "label": "Manage group memberships",
-      "required": false,
-      "filterable": true,
-      "useDataSource": true,
-      "dualList": {
-        "options": [
-          {
-            "guid": "75ea2890-88f8-4851-b202-626123054e14",
-            "Name": "Apple"
+            ],
+            "height": 300,
+            "rowSelection": "single"
           },
-          {
-            "guid": "0607270d-83e2-4574-9894-0b70011b663f",
-            "Name": "Pear"
-          },
-          {
-            "guid": "1ef6fe01-3095-4614-a6db-7c8cd416ae3b",
-            "Name": "Orange"
-          }
-        ],
-        "optionKeyProperty": "id",
-        "optionDisplayProperty": "displayValue",
-        "labelLeft": "All users",
-        "labelRight": "Current group members"
-      },
-      "destinationDataSourceConfig": {
-        "dataSourceGuid": "$dataSourceGuid_1",
-        "input": {
-          "propertyInputs": [
-            {
-              "propertyName": "selectedGroup",
-              "otherFieldValue": {
-                "otherFieldKey": "group"
-              }
+          "dataSourceConfig": {
+            "dataSourceGuid": "$dataSourceGuid_0",
+            "input": {
+              "propertyInputs": []
             }
-          ]
-        }
-      },
-      "dataSourceConfig": {
-        "dataSourceGuid": "$dataSourceGuid_2",
-        "input": {
-          "propertyInputs": []
-        }
+          },
+          "useFilter": true,
+          "allowCsvDownload": true
+        },
+        "type": "grid",
+        "summaryVisibility": "Show",
+        "requiresTemplateOptions": true,
+        "requiresKey": true,
+        "requiresDataSource": true
       }
-    },
-    "hideExpression": "!model[\"group\"]",
-    "type": "duallist",
-    "summaryVisibility": "Show",
-    "sourceDataSourceIdentifierSuffix": "source-datasource",
-    "destinationDataSourceIdentifierSuffix": "destination-datasource",
-    "requiresTemplateOptions": true,
-    "requiresKey": true,
-    "requiresDataSource": false
+    ]
+  },
+  {
+    "label": "Memberships",
+    "fields": [
+      {
+        "key": "gridDetails",
+        "templateOptions": {
+          "label": "Basic attributes",
+          "required": false,
+          "grid": {
+            "columns": [
+              {
+                "headerName": "Name",
+                "field": "name"
+              },
+              {
+                "headerName": "Value",
+                "field": "value"
+              }
+            ],
+            "height": 350,
+            "rowSelection": "single"
+          },
+          "dataSourceConfig": {
+            "dataSourceGuid": "$dataSourceGuid_1",
+            "input": {
+              "propertyInputs": [
+                {
+                  "propertyName": "selectedGroup",
+                  "otherFieldValue": {
+                    "otherFieldKey": "gridGroups"
+                  }
+                }
+              ]
+            }
+          },
+          "useFilter": false,
+          "allowCsvDownload": true
+        },
+        "type": "grid",
+        "summaryVisibility": "Hide element",
+        "requiresTemplateOptions": true,
+        "requiresKey": true,
+        "requiresDataSource": true
+      },
+      {
+        "key": "memberships",
+        "templateOptions": {
+          "label": "Memberships",
+          "required": false,
+          "filterable": true,
+          "useDataSource": true,
+          "dualList": {
+            "options": [
+              {
+                "guid": "75ea2890-88f8-4851-b202-626123054e14",
+                "Name": "Apple"
+              },
+              {
+                "guid": "0607270d-83e2-4574-9894-0b70011b663f",
+                "Name": "Pear"
+              },
+              {
+                "guid": "1ef6fe01-3095-4614-a6db-7c8cd416ae3b",
+                "Name": "Orange"
+              }
+            ],
+            "optionKeyProperty": "guid",
+            "optionDisplayProperty": "name",
+            "labelLeft": "Available",
+            "labelRight": "Member of"
+          },
+          "dataSourceConfig": {
+            "dataSourceGuid": "$dataSourceGuid_2",
+            "input": {
+              "propertyInputs": []
+            }
+          },
+          "destinationDataSourceConfig": {
+            "dataSourceGuid": "$dataSourceGuid_3",
+            "input": {
+              "propertyInputs": [
+                {
+                  "propertyName": "selectedGroup",
+                  "otherFieldValue": {
+                    "otherFieldKey": "gridGroups"
+                  }
+                }
+              ]
+            }
+          },
+          "useFilter": false
+        },
+        "type": "duallist",
+        "summaryVisibility": "Show",
+        "sourceDataSourceIdentifierSuffix": "source-datasource",
+        "destinationDataSourceIdentifierSuffix": "destination-datasource",
+        "requiresTemplateOptions": true,
+        "requiresKey": true,
+        "requiresDataSource": false
+      }
+    ]
   }
 ]

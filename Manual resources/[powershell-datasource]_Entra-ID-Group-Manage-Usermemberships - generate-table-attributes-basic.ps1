@@ -1,25 +1,6 @@
-# Variables configured in form
-$group = $datasource.selectedGroup
+# Set TLS to accept TLS, TLS 1.1 and TLS 1.2
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls -bor [Net.SecurityProtocolType]::Tls11 -bor [Net.SecurityProtocolType]::Tls12
 
-# Global variables
-# Outcommented as these are set from Global Variables
-# $EntraIdTenantId = ""
-# $EntraIdAppId = ""
-# $EntraIdCertificateBase64String = ""
-# $EntraIdCertificatePassword = ""
-
-# Fixed values
-$propertiesToSelect = @("id", "displayName", "userPrincipalName", "mail") # Properties to select from Microsoft Graph API, comma separated
-
-# Enable TLS1.2
-[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor [System.Net.SecurityProtocolType]::Tls12
-
-# Set debug logging
-$VerbosePreference = "SilentlyContinue"
-$InformationPreference = "Continue"
-$WarningPreference = "Continue"
-
-#region functions
 function Resolve-MicrosoftGraphAPIError {
     [CmdletBinding()]
     param (
@@ -67,23 +48,11 @@ function Resolve-MicrosoftGraphAPIError {
     }
 }
 
-
 function Get-MSEntraAccessToken {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
-        [ValidateNotNull()]
-        $Certificate,
-        
-        [Parameter(Mandatory)]
-        [ValidateNotNullOrEmpty()]
-        [string]
-        $AppId,
-        
-        [Parameter(Mandatory)]
-        [ValidateNotNullOrEmpty()]
-        [string]
-        $TenantId
+        $Certificate
     )
     try {
         # Get the DER encoded bytes of the certificate
@@ -107,9 +76,9 @@ function Get-MSEntraAccessToken {
 
         # Create a JWT payload
         $payload = [Ordered]@{
-            'iss' = "$($AppId)"
-            'sub' = "$($AppId)"
-            'aud' = "https://login.microsoftonline.com/$($TenantId)/oauth2/token"
+            'iss' = "$entraidappid"
+            'sub' = "$entraidappid"
+            'aud' = "https://login.microsoftonline.com/$EntraIdTenantId/oauth2/token"
             'exp' = ($currentUnixTimestamp + 3600) # Expires in 1 hour
             'nbf' = ($currentUnixTimestamp - 300) # Not before 5 minutes ago
             'iat' = $currentUnixTimestamp
@@ -132,14 +101,14 @@ function Get-MSEntraAccessToken {
 
         $createEntraAccessTokenBody = @{
             grant_type            = 'client_credentials'
-            client_id             = $AppId
+            client_id             = $entraidappid
             client_assertion_type = 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer'
             client_assertion      = $jwtToken
             resource              = 'https://graph.microsoft.com'
         }
 
         $createEntraAccessTokenSplatParams = @{
-            Uri         = "https://login.microsoftonline.com/$($TenantId)/oauth2/token"
+            Uri         = "https://login.microsoftonline.com/$EntraIdTenantId/oauth2/token"
             Body        = $createEntraAccessTokenBody
             Method      = 'POST'
             ContentType = 'application/x-www-form-urlencoded'
@@ -157,89 +126,56 @@ function Get-MSEntraAccessToken {
 
 function Get-MSEntraCertificate {
     [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)]
-        [ValidateNotNullOrEmpty()]
-        [string]
-        $CertificateBase64String,
-        
-        [Parameter(Mandatory)]
-        [ValidateNotNullOrEmpty()]
-        [string]
-        $CertificatePassword
-    )
+    param()
     try {
-        $rawCertificate = [system.convert]::FromBase64String($CertificateBase64String)
-        $certificate = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($rawCertificate, $CertificatePassword, [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::Exportable)
+        $rawCertificate = [system.convert]::FromBase64String($EntraIdCertificateBase64String)
+        $certificate = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($rawCertificate, $EntraIdCertificatePassword, [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::Exportable)
         Write-Output $certificate
     }
     catch {
         $PSCmdlet.ThrowTerminatingError($_)
     }
 }
-#endregion functions
 
 try {
-    # Convert base64 certificate string to certificate object
-    $actionMessage = "converting base64 certificate string to certificate object"
-    $certificate = Get-MSEntraCertificate -CertificateBase64String $EntraIdCertificateBase64String -CertificatePassword $EntraIdCertificatePassword
-    Write-Verbose "Converted base64 certificate string to certificate object"
+    $groupId = $datasource.selectedGroup.id
 
-    # Create access token
-    $actionMessage = "creating access token"
-    $entraToken = Get-MSEntraAccessToken -Certificate $certificate -AppId $EntraIdAppId -TenantId $EntraIdTenantId
-    Write-Verbose "Created access token"
+    Write-Information 'Connecting to MS Entra (Graph)'
+    $certificate = Get-MSEntraCertificate
+    $entraToken = Get-MSEntraAccessToken -Certificate $certificate
 
-    # Create headers
-    $actionMessage = "creating headers"
-    $headers = @{
-        "Authorization"    = "Bearer $($entraToken)"
-        "Accept"           = "application/json"
-        "Content-Type"     = "application/json"
-        "ConsistencyLevel" = "eventual" # Needed to filter on specific attributes (https://docs.microsoft.com/en-us/graph/aad-advanced-queries)
+    # Authorization header
+    $authorization = @{
+        Authorization = "Bearer $entraToken"
+        Accept        = "application/json"
     }
-    Write-Verbose "Created headers"
 
-    # Get Microsoft Entra ID Group Members
-    # API docs: https://learn.microsoft.com/en-us/graph/api/group-list-members?view=graph-rest-1.0&tabs=http
-    $actionMessage = "querying members of Microsoft Entra ID Group [$($group.displayName)] with ID [$($group.id)]"
-    $microsoftEntraIDGroupMembers = [System.Collections.ArrayList]@()
-    do {
-        $getMicrosoftEntraIDGroupMembersSplatParams = @{
-            Uri         = "https://graph.microsoft.com/v1.0/groups/$($group.id)/members?`$select=$($propertiesToSelect -join ',')&`$top=999&`$count=true"
-            Headers     = $headers
-            Method      = "GET"
-            Verbose     = $false
-            ErrorAction = "Stop"
-        }
-        if (-not[string]::IsNullOrEmpty($getMicrosoftEntraIDGroupMembersResponse.'@odata.nextLink')) {
-            $getMicrosoftEntraIDGroupMembersSplatParams["Uri"] = $getMicrosoftEntraIDGroupMembersResponse.'@odata.nextLink'
-        }
-        
-        $getMicrosoftEntraIDGroupMembersResponse = $null
-        $getMicrosoftEntraIDGroupMembersResponse = Invoke-RestMethod @getMicrosoftEntraIDGroupMembersSplatParams
-    
-        # Select only specified properties to limit memory usage
-        $getMicrosoftEntraIDGroupMembersResponse.Value = $getMicrosoftEntraIDGroupMembersResponse.Value | Select-Object $propertiesToSelect
+    Write-Information "Retrieving AzureAD group id=$groupId"
 
-        if ($getMicrosoftEntraIDGroupMembersResponse.Value -is [array]) {
-            [void]$microsoftEntraIDGroupMembers.AddRange($getMicrosoftEntraIDGroupMembersResponse.Value)
-        }
-        else {
-            [void]$microsoftEntraIDGroupMembers.Add($getMicrosoftEntraIDGroupMembersResponse.Value)
-        }
-    } while (-not[string]::IsNullOrEmpty($getMicrosoftEntraIDGroupMembersResponse.'@odata.nextLink'))
-    Write-Information "Queried members of Microsoft Entra ID Group [$($group.displayName)] with ID [$($group.id)]. Result count: $(($microsoftEntraIDGroupMembers | Measure-Object).Count)"
+    # Choose some basic properties to return
+    $properties = @(
+        "id",
+        "displayName",
+        "description",
+        "mail",
+        "mailEnabled",
+        "securityEnabled",
+        "groupTypes",
+        "visibility",
+        "createdDateTime"
+    )
 
-    # Send results to HelloID
-    $actionMessage = "sending results to HelloID"
-    $microsoftEntraIDGroupMembers | ForEach-Object {
-        # Add displayValue property as HelloID can only display a single property
-        $_ | Add-Member -NotePropertyName 'displayValue' -NotePropertyValue "$($_.displayName) [$($_.userPrincipalName)]" -Force
-        Write-Output $_
+    $searchUri = "https://graph.microsoft.com/v1.0/groups/$groupId" + '?$select=' + ($properties -join ",")
+    $azureADGroup = Invoke-RestMethod -Uri $searchUri -Method Get -Headers $authorization -Verbose:$false
+    Write-Information "Finished retrieving AzureAD group [$groupId]"
+
+    foreach ($tmp in $azureADGroup.psObject.properties) {
+        if ($tmp.Name -in $properties) {
+            $returnObject = @{ name = $tmp.Name; value = $tmp.Value }
+            Write-Output $returnObject
+        }
     }
-}
-catch {
+} catch {
     $ex = $PSItem
     if ($($ex.Exception.GetType().FullName -eq 'Microsoft.PowerShell.Commands.HttpResponseException') -or
         $($ex.Exception.GetType().FullName -eq 'System.Net.WebException')) {
@@ -254,3 +190,4 @@ catch {
     Write-Warning $warningMessage
     Write-Error $auditMessage
 }
+

@@ -1,9 +1,9 @@
 [
   {
-    "description": null,
+    "description": "",
     "translateDescription": false,
     "inputFieldType": 1,
-    "key": "searchValue",
+    "key": "selectedGroup",
     "type": 0,
     "options": 1
   }
