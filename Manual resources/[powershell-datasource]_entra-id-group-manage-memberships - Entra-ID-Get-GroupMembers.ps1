@@ -233,10 +233,12 @@ try {
 
     # Send results to HelloID
     $actionMessage = "sending results to HelloID"
-    $microsoftEntraIDGroupMembers | ForEach-Object {
-        # Add displayValue property as HelloID can only display a single property
-        $_ | Add-Member -NotePropertyName 'displayValue' -NotePropertyValue "$($_.displayName) [$($_.userPrincipalName)]" -Force
-        Write-Output $_
+    if ($microsoftEntraIDGroupMembers) {
+        $microsoftEntraIDGroupMembers | ForEach-Object {
+            # Add displayValue property as HelloID can only display a single property
+            $_ | Add-Member -NotePropertyName 'displayValue' -NotePropertyValue "$($_.displayName) [$($_.userPrincipalName)]" -Force
+            Write-Output $_
+        }
     }
 }
 catch {

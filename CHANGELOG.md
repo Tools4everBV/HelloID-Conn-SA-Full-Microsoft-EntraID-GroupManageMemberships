@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.1.3] - 2026-07-27
+
+### Fixed
+
+- Fixed [#4](https://github.com/Tools4everBV/HelloID-Conn-SA-Full-Microsoft-EntraID-GroupManageMemberships/issues/4): When requesting the members of a group, when the group has none, an incident is created indicating the execution of datasource 'entra-id-group-manage-memberships | Entra-ID-Get-GroupMembers' has failed.
+
 ## [1.1.2] - 2026-06-05
 
 ### Changed
